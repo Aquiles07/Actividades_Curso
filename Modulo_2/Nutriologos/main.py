@@ -8,62 +8,88 @@ Original file is located at
 """
 
 import streamlit as st
-import numpy as np
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
+# Función para generar datos simulados
 def generar_datos_simulados(cantidad_datos):
-    edad = st.slider("Edad", 18, 80, 30, step=1)
-    peso = st.slider("Peso (kg)", 40, 150, 70, step=1)
-    altura = st.slider("Altura (cm)", 100, 250, 170, step=1)
-    nivel_actividad = st.selectbox("Nivel de Actividad Física", ['Sedentario', 'Ligero', 'Moderado', 'Intenso'])
+    edad_data = np.random.randint(18, 80, cantidad_datos)
+    peso_data = np.random.normal(70, 15, cantidad_datos)
+    altura_data = np.random.normal(170, 10, cantidad_datos)
 
-    # Generar datos simulados basados en la entrada del usuario
-    edad_data = np.random.randint(edad, edad+10, cantidad_datos)
-    peso_data = np.random.normal(peso, 15, cantidad_datos)
-    altura_data = np.random.normal(altura, 10, cantidad_datos)
-    actividad_data = np.array([nivel_actividad] * cantidad_datos)
-
-    # Crear DataFrame simulado
-    data = {
+    df = pd.DataFrame({
         'Edad': edad_data,
         'Peso': peso_data,
-        'Altura': altura_data,
-        'Nivel de Actividad Física': actividad_data
-    }
-    df = pd.DataFrame(data)
+        'Altura': altura_data
+    })
+
+    # Mostrar histogramas de edad, peso y altura
+    st.write("### Histograma de Edad:")
+    plt.hist(df['Edad'], bins=30)
+    st.pyplot()
+
+    st.write("### Histograma de Peso:")
+    plt.hist(df['Peso'], bins=30)
+    st.pyplot()
+
+    st.write("### Histograma de Altura:")
+    plt.hist(df['Altura'], bins=30)
+    st.pyplot()
+
     return df
 
-def entrenar_modelo(df):
+# Función para entrenar el modelo y predecir enfermedades crónicas
+def entrenar_y_predecir_enfermedad(df, enfermedad_objetivo):
+    # Definir características (features) y variable objetivo
     X = df[['Edad', 'Peso', 'Altura']]
-    y = df['Nivel de Actividad Física']
+    y = df[enfermedad_objetivo]
 
+    # Dividir datos en conjunto de entrenamiento y prueba
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+    # Inicializar modelo de clasificación RandomForest
     rf_classifier = RandomForestClassifier(random_state=42)
+
+    # Entrenar modelo
     rf_classifier.fit(X_train, y_train)
 
+    # Realizar predicciones en conjunto de prueba
     y_pred = rf_classifier.predict(X_test)
+
+    # Calcular métricas de evaluación
     accuracy = accuracy_score(y_test, y_pred)
-    return accuracy
+    report = classification_report(y_test, y_pred)
+    matrix = confusion_matrix(y_test, y_pred)
+
+    # Mostrar matriz de confusión
+    st.write("### Matriz de Confusión:")
+    sns.heatmap(matrix, annot=True, fmt='d', cmap='Blues')
+    st.pyplot()
+
+    return accuracy, report
 
 def main():
-    st.title("Aplicación de Análisis de Datos y Entrenamiento de Modelo")
+    st.title("Aplicación de Predicción de Enfermedades Crónicas")
 
     cantidad_datos = st.slider("Cantidad de Datos Simulados", 100, 2000, 500, step=100)
 
-    # Generar datos simulados basados en la entrada del usuario
+    # Generar datos simulados
     df = generar_datos_simulados(cantidad_datos)
 
-    st.write("### Datos Simulados Generados:")
-    st.write(df.head())
+    # Definir lista de nombres de enfermedades crónicas que coincidan con las columnas en df
+    enfermedades = df.columns.tolist()  # Obtener nombres de columnas como lista
 
-    st.write("### Entrenando Modelo de Clasificación...")
-    accuracy = entrenar_modelo(df)
+    # Permitir al usuario seleccionar la enfermedad crónica a predecir
+    enfermedad_objetivo = st.selectbox("Seleccionar Enfermedad Crónica a Predecir", enfermedades)
 
-    st.write(f"**Precisión del Modelo:** {accuracy:.2f}")
+    st.write(f"### Entrenando Modelo para Predecir {enfermedad_objetivo}...")
+    accuracy, report = entrenar_y_predecir_enfermedad(df, enfermedad_objetivo)
 
-if __name__ == "__main__":
-    main()
+    st.write(f"**Precisión del Modelo para {enfermedad_objetivo}:** {accuracy:.2f}")
+    st.write("### Reporte de Clasificación:")
+    st.write(report)
